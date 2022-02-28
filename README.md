@@ -1,0 +1,3 @@
+## wireshark usb decoder for jlink traffic
+
+it's not _remotely_ finished, but the stub is there to plug in a statemachine....

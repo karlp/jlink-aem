@@ -1,0 +1,45 @@
+22:05 <zapb_> karlp, I've already RE'd it
+22:05 <zapb_> I had a private patch for AEM+OpenOCD years ago
+22:05 <zapb_> karlp, it uses the EMUCOM interface
+22:06 <zapb_> emucom can be used via jlink commands
+22:09 <karlp> yeah, I imagined it would be, I don't imagine it's _terribly_ difficult, just wondering if it was already available or not :)
+22:10 <karlp> I have a 2008 jlink usb protocol doc, and have started grossly hacking up a wireshark decoder, haven't done this in years, some of it is a little different
+22:10 <karlp> I take it there were/are professional reasons it couldn't be shared?
+22:11 <karlp> (which is fine, just checkign)
+22:12 <zapb_> karlp, you mean AEM?
+22:13 <karlp> yeah.
+22:13 <zapb_> No, just no time and motivation to make it ready for release
+22:13 <zapb_> I can send you the documentation
+22:13 <zapb_> Basically you have to read a specific channel via "jlink emucom read"
+22:14 <zapb_> The read data gives you a timestamp and the current
+22:14 <karlp> can I do that with libjaylink?
+22:14 <zapb_> standalone libjaylink without OpenOCD?
+22:15 <karlp> eh, either
+22:15 <karlp> code correlation is cute, but not essential
+22:15 <karlp> I'd be fine just using it as a fany multimeter :)
+22:15 <zapb_> karlp, the command above is with OpenOCD
+22:16 <karlp> looks like there's jaylink_emucom_read
+22:16 <zapb_> you can also write 10 lines C code to establish a connection with libjaylink and call jaylink_emucom_read()
+22:16 <karlp> oh, you can just read it straight up frrom within openocd?!
+22:16 <karlp> oh, that's cute
+22:16 <zapb_> Yep
+22:17 <karlp> guess I'd better fix up this efr32 series 2 patch set then :)
+22:17 <zapb_> Writing a Tcl interface for emucom is on my TODO
+22:17 <karlp> seeing as it's back in play :)
+22:17 <zapb_> karlp, how's that related to AEM?
+22:18 <zapb_> you mean instead of using "simplicity" studio? :)
+22:21 <karlp> oh, I was doing preliminary evals of a few parts, including efr32 series 2 abotu a year ago, and went with stm32wb.
+22:21 <karlp> however, for not relevant right now reasons, I'm back on efr32
+22:23 <karlp> and I'm just using ssv5, and it's actualyl fine, I mean, it's not, and I have to run xorg, becuase it's busted in all sorts of ways, but Ive been getting a lot done with it
+22:23 <karlp> but I have this itch to fix up the oocd support for it :)
+22:24 <karlp> if you ahve some notes on wha tthe specific channel is I need to work with, tha twould be great still.
+22:27 <zapb_> karlp, channel number: 0x00010001
+22:27 <karlp> thanks!
+22:27 <zapb_> Byte 0-3: Time in milliseconds since device powerup
+22:27 <zapb_> Byte 4-7: Current in mA (C-float, IEEE-754)
+22:27 <zapb_> Byte 8-11: Voltage in V (C-float, IEEE-754)
+22:27 <zapb_> You have to read 12 bytes
+22:28 <zapb_> This worked for STK 3300
+22:28 <zapb_> Let me know if it works with your device too
+
+
