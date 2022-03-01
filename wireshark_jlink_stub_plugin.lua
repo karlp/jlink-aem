@@ -11,17 +11,25 @@ p_jlink = Proto("jlink", "jlink USB Protocol")
 -- known jlink commands.  Sourced from "RM08001-R2 Reference manual for J-Link USB Protocol 2008"
 local command_types = {
 	-- TODO - make better FSM wrapping, this is just a "how many in's are expected..."
-    [0x1] = {"EMU_CMD_VERSION", 2}
-    [0xc0] = {"EMU_CMD_GET_SPEEDS", 1}
-    [0xd4] = {"EMU_CMD_GET_MAX_MEM_BLOCK", 1}
-    [0xe8] = {"EMU_CMD_GET_CAPS", 1}
-    [0xed] = {"EMU_CMD_GET_EXT_CAPS", 1}
-    [0xf0] = {"EMU_CMD_GET_HW_VERSION", 1}
+    [0x1] = "EMU_CMD_VERSION",
+    [0xc0] = "EMU_CMD_GET_SPEEDS",
+    [0xd4] = "EMU_CMD_GET_MAX_MEM_BLOCK",
+    [0xe8] = "EMU_CMD_GET_CAPS",
+    [0xed] = "EMU_CMD_GET_EXT_CAPS",
+    [0xee] = "EMU_CMD_EMUCOM",
+    [0xf0] = "EMU_CMD_GET_HW_VERSION",
 }
 
+local emucom_cmds = {
+    [0] = "READ",
+    [1] = "WRITE",
+}
 
 p_jlink.fields.command = ProtoField.uint8("jlink.command", "Command Type", base.HEX, command_types)
-p_jlink.fields.unknown  = ProtoField.bytes("lwla.unknown", "Unidentified message data")
+p_jlink.fields.emucom_cmd = ProtoField.uint8("jlink.emucom_cmd", "EMUCOM Command", base.DEC, emucom_cmds)
+p_jlink.fields.emucom_chan = ProtoField.uint32("jlink.emucom_chan", "EMUCOM Channel", base.HEX)
+p_jlink.fields.emucom_len = ProtoField.uint32("jlink.emucom_len", "EMUCOM Length", base.DEC)
+p_jlink.fields.unknown  = ProtoField.bytes("jlink.unknown", "Unidentified message data")
 
 -- Referenced USB URB dissector fields.
 local f_urb_type = Field.new("usb.urb_type")
@@ -40,23 +48,32 @@ function p_jlink.dissector(tvb, pinfo, tree)
 	local transfer_type = f_transfer_type().value
 	local ep = f_endpoint().value
 	local ep_dir = f_endpoint_dir().value -- 0 == out, 1 =0 in
-	print("ep, epdir, with types", ep, tostring(type(ep)), ep_dir, tostring(type(ep_dir)))
+	--print("ep, epdir, with types", ep, tostring(type(ep)), ep_dir, tostring(type(ep_dir)))
 	assert(transfer_type==3) -- we're onyl adding ourselves to the bulk table right now.... duh
 	assert(ep == 3)
 
 	pinfo.cols.protocol = p_jlink.name
 	local subtree = tree:add(p_jlink, tvb(), "Jlink")
 
+        local info_s = "unknown"
+
 	if ep_dir == 0 then
 		local cmd = tvb(0,1):uint()
-		print("cmd = ", cmd, type(cmd))
+		--print("cmd = ", cmd, type(cmd))
 		subtree:add(p_jlink.fields.command, tvb(0,1)):set_generated()
 		local mode = command_types[cmd]
-		pinfo.cols.info:set(mode[0])
+		info_s = mode
 		-- set expected to mode[1]....
+                if mode == "EMU_CMD_EMUCOM" then
+                    info_s = string.format("%s %s", info_s, emucom_cmds[tvb(1,1):uint()])
+                    subtree:add(p_jlink.fields.emucom_cmd, tvb(1,1)):set_generated()
+                    subtree:add_le(p_jlink.fields.emucom_chan, tvb(2,4)):set_generated()
+                    subtree:add_le(p_jlink.fields.emucom_len, tvb(6,4)):set_generated()
+                end
 	else
 		-- directin == in.  should be in the other mode now.... bump the state machine :)
 	end
+        pinfo.cols.info:set(info_s)
 
 
 
